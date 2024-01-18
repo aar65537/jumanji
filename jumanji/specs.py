@@ -119,7 +119,7 @@ class Spec(abc.ABC, Generic[T]):
         )
         return self._constructor(**constructor_kwargs)
 
-    def sample(self, key: chex.PRNGKey, mask: Optional[chex.Array] = None) -> T:
+    def _sample(self, key: chex.PRNGKey, mask: Optional[chex.Array] = None) -> T:
         """Sample a random value which conforms to this spec.
 
         Args:
@@ -136,7 +136,7 @@ class Spec(abc.ABC, Generic[T]):
             mask = jax.tree_util.tree_unflatten(treedef, [None] * treedef.num_leaves)
         return self._constructor(
             **jax.tree_util.tree_map(
-                lambda spec, key, mask: spec.sample(key, mask), self._specs, keys, mask
+                lambda spec, key, mask: spec._sample(key, mask), self._specs, keys, mask
             )
         )
 
@@ -255,7 +255,7 @@ class Array(Spec[chex.Array]):
         sample_array = jnp.vectorize(self._sample_scalar, signature="(n),(),()->()")
         return sample_array(keys, minimum, maximum)
 
-    def sample(
+    def _sample(
         self, key: chex.PRNGKey, mask: Optional[chex.Array] = None
     ) -> chex.Array:
         """Sample a random value which conforms to this spec.
@@ -441,7 +441,7 @@ class BoundedArray(Array):
             )
         return value
 
-    def sample(
+    def _sample(
         self, key: chex.PRNGKey, mask: Optional[chex.Array] = None
     ) -> chex.Array:
         """Sample a random value which conforms to this spec.
@@ -536,7 +536,7 @@ class DiscreteArray(BoundedArray):
         """Returns the number of items."""
         return self._num_values
 
-    def sample(
+    def _sample(
         self, key: chex.PRNGKey, mask: Optional[chex.Array] = None
     ) -> chex.Array:
         """Sample a random value which conforms to this spec.
@@ -553,7 +553,7 @@ class DiscreteArray(BoundedArray):
             ValueError: if mask is not proper shape.
         """
         if mask is None:
-            return super().sample(key)
+            return super()._sample(key)
         elif mask.shape != (self.num_values,):
             raise ValueError(
                 f"Expected mask of shape {(self.num_values,)}, "
@@ -691,7 +691,7 @@ class MultiDiscreteArray(BoundedArray):
             + f"{self._tuple_nv} for index mode, but recieved mask shape of {mask.shape}."
         )
 
-    def sample(
+    def _sample(
         self,
         key: chex.PRNGKey,
         mask: Optional[chex.Array] = None,
@@ -718,7 +718,7 @@ class MultiDiscreteArray(BoundedArray):
         mode = self._get_valid_mode(mask, mode)
 
         if mask is None:
-            return super().sample(key)
+            return super()._sample(key)
 
         elif mode == "table":
             keys = jax.random.split(key, prod(self.shape)).reshape(*self.shape, 2)

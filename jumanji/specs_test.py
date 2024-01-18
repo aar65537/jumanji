@@ -124,26 +124,30 @@ class TestNestedSpec:
 
     def test_spec__sample(self, triply_nested_spec: specs.Spec) -> None:
         key = jax.random.PRNGKey(0)
-        assert isinstance(triply_nested_spec.sample(key), TriplyNested)
-        assert isinstance(triply_nested_spec["doubly_nested"].sample(key), DoublyNested)
+        assert isinstance(triply_nested_spec._sample(key), TriplyNested)
         assert isinstance(
-            triply_nested_spec["doubly_nested"]["singly_nested"].sample(key),
+            triply_nested_spec["doubly_nested"]._sample(key), DoublyNested
+        )
+        assert isinstance(
+            triply_nested_spec["doubly_nested"]["singly_nested"]._sample(key),
             SinglyNested,
         )
 
     def test_spec__validate(self, triply_nested_spec: specs.Spec) -> None:
         key = jax.random.PRNGKey(0)
-        singly_nested = triply_nested_spec["doubly_nested"]["singly_nested"].sample(key)
+        singly_nested = triply_nested_spec["doubly_nested"]["singly_nested"]._sample(
+            key
+        )
         singly_nested = triply_nested_spec["doubly_nested"]["singly_nested"].validate(
             singly_nested
         )
         assert isinstance(singly_nested, SinglyNested)
 
-        doubly_nested = triply_nested_spec["doubly_nested"].sample(key)
+        doubly_nested = triply_nested_spec["doubly_nested"]._sample(key)
         doubly_nested = triply_nested_spec["doubly_nested"].validate(doubly_nested)
         assert isinstance(doubly_nested, DoublyNested)
 
-        triply_nested = triply_nested_spec.sample(key)
+        triply_nested = triply_nested_spec._sample(key)
         triply_nested = triply_nested_spec.validate(triply_nested)
         assert isinstance(triply_nested, TriplyNested)
 
@@ -248,12 +252,12 @@ class TestArray:
         key = jax.random.PRNGKey(0)
 
         spec = specs.Array((1, 2), dtype)
-        test_sample = spec.sample(key)
+        test_sample = spec._sample(key)
         spec.validate(test_sample)
 
         mask = jnp.zeros((1, 2), jnp.bool_)
         with pytest.raises(ValueError):
-            spec.sample(key, mask)
+            spec._sample(key, mask)
 
     def test_serialization(self) -> None:
         spec = specs.Array([1, 5], jnp.float32, "pickle_test")
@@ -432,12 +436,12 @@ class TestBoundedArray:
         key = jax.random.PRNGKey(0)
 
         spec = specs.BoundedArray((1, 2, 3), dtype, minimum, maximum)
-        test_sample = spec.sample(key)
+        test_sample = spec._sample(key)
         spec.validate(test_sample)
 
         mask = jnp.zeros((1, 2, 3), bool)
         with pytest.raises(ValueError):
-            spec.sample(key, mask)
+            spec._sample(key, mask)
 
     def test_scalar_bounds(self) -> None:
         spec = specs.BoundedArray((), float, minimum=0.0, maximum=1.0)
@@ -533,11 +537,11 @@ class TestDiscreteArray:
         key = jax.random.PRNGKey(0)
 
         spec = specs.DiscreteArray(5)
-        test_sample = spec.sample(key)
+        test_sample = spec._sample(key)
         spec.validate(test_sample)
 
         mask = jnp.array((False, False, True, False, False), bool)
-        test_sample = spec.sample(key, mask)
+        test_sample = spec._sample(key, mask)
         spec.validate(test_sample)
         assert test_sample == 2
 
@@ -625,13 +629,13 @@ class TestMultiDiscreteArray:
         key = jax.random.PRNGKey(4)
         spec = specs.MultiDiscreteArray(jnp.array(num_values))
         if is_valid:
-            test_sample = spec.sample(key, mask, mode)
+            test_sample = spec._sample(key, mask, mode)
             spec.validate(test_sample)
             if expected_sample is not None:
                 chex.assert_trees_all_close(test_sample, jnp.array(expected_sample))
         else:
             with pytest.raises(ValueError):
-                spec.sample(key, mask, mode)
+                spec._sample(key, mask, mode)
 
     def test_serialization(self) -> None:
         spec = specs.MultiDiscreteArray(

@@ -17,23 +17,11 @@ from typing import Callable, Optional, TypeVar
 import chex
 import jax
 
-from jumanji import specs
 from jumanji.env import Environment
 
 Observation = TypeVar("Observation")
 Action = TypeVar("Action")
 SelectActionFn = Callable[[chex.PRNGKey, Observation], Action]
-
-
-def make_random_select_action_fn(action_spec: specs.Spec) -> SelectActionFn:
-    """Create select action function that chooses random actions."""
-
-    def select_action(key: chex.PRNGKey, observation: chex.ArrayTree) -> chex.ArrayTree:
-        if hasattr(observation, "action_mask"):
-            return action_spec.sample(key, observation.action_mask)
-        return action_spec.sample(key)
-
-    return select_action
 
 
 def check_env_does_not_smoke(
@@ -42,9 +30,8 @@ def check_env_does_not_smoke(
     assert_finite_check: bool = True,
 ) -> None:
     """Run an episode of the environment, with a jitted step function to check no errors occur."""
-    action_spec = env.action_spec()
     if select_action is None:
-        select_action = make_random_select_action_fn(action_spec)
+        select_action = env.sample_action
 
     key = jax.random.PRNGKey(0)
     key, reset_key = jax.random.split(key)

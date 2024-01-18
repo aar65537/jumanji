@@ -154,9 +154,7 @@ def test_bin_pack__pack_all_items_dummy_instance(bin_pack: BinPack) -> None:
 
     while not timestep.last():
         action_key, key = jax.random.split(key)
-        action = bin_pack.action_spec().sample(
-            action_key, timestep.observation.action_mask
-        )
+        action = bin_pack.sample_action(action_key, timestep.observation)
         state, timestep = step_fn(state, action)
 
     assert jnp.array_equal(state.items_placed, state.items_mask)
