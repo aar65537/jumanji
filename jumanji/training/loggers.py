@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import abc
 import collections
@@ -21,7 +22,7 @@ from contextlib import AbstractContextManager
 from types import TracebackType
 from typing import Any, DefaultDict, Dict, Optional, Type
 
-import chex
+import jax.numpy as jnp
 import numpy as np
 import omegaconf
 import tensorboardX
@@ -56,7 +57,7 @@ class Logger(AbstractContextManager):
     def upload_checkpoint(self) -> None:
         """Uploads a checkpoint when exiting the logger."""
 
-    def __enter__(self) -> "Logger":
+    def __enter__(self) -> Logger:
         logging.info("Starting logger.")
         self._variables_enter = self._get_variables()
         return self
@@ -103,6 +104,23 @@ class Logger(AbstractContextManager):
         return {(k, id(v)): v for k, v in inspect.stack()[2].frame.f_locals.items()}
 
 
+class NoOpLogger(Logger):
+    """Does nothing. This logger is useful in the case of multi-node training where only the
+    master node should log.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(save_checkpoint=False)
+
+    def write(
+        self,
+        data: Dict[str, Any],
+        label: Optional[str] = None,
+        env_steps: Optional[int] = None,
+    ) -> None:
+        pass
+
+
 class TerminalLogger(Logger):
     """Logs to terminal."""
 
@@ -116,7 +134,7 @@ class TerminalLogger(Logger):
     def _format_values(self, data: Dict[str, Any]) -> str:
         return " | ".join(
             f"{key.replace('_', ' ').title()}: "
-            f"{(f'{value:.3f}' if isinstance(value, (float, chex.Array)) else f'{value:,}')}"
+            f"{(f'{value:.3f}' if isinstance(value, (float, jnp.ndarray)) else f'{value:,}')}"
             for key, value in sorted(data.items())
         )
 

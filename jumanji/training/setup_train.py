@@ -40,6 +40,7 @@ from jumanji.environments import (
     RubiksCube,
     Snake,
     Sudoku,
+    Tetris,
 )
 from jumanji.training import networks
 from jumanji.training.agents.a2c import A2CAgent
@@ -49,6 +50,7 @@ from jumanji.training.evaluator import Evaluator
 from jumanji.training.loggers import (
     Logger,
     NeptuneLogger,
+    NoOpLogger,
     TensorboardLogger,
     TerminalLogger,
 )
@@ -60,6 +62,9 @@ from jumanji.wrappers import VmapAutoResetWrapper
 
 def setup_logger(cfg: DictConfig) -> Logger:
     logger: Logger
+    # Log only once if there are multiple hosts on the pod.
+    if jax.process_index() != 0:
+        return NoOpLogger()
     if cfg.logger.type == "tensorboard":
         logger = TensorboardLogger(
             name=cfg.logger.name, save_checkpoint=cfg.logger.save_checkpoint
@@ -175,6 +180,9 @@ def _setup_random_policy(  # noqa: CCR001
     elif cfg.env.name == "connector":
         assert isinstance(env.unwrapped, Connector)
         random_policy = networks.make_random_policy_connector()
+    elif cfg.env.name == "tetris":
+        assert isinstance(env.unwrapped, Tetris)
+        random_policy = networks.make_random_policy_tetris(tetris=env.unwrapped)
     elif cfg.env.name == "mmst":
         assert isinstance(env.unwrapped, MMST)
         random_policy = networks.make_random_policy_mmst()
@@ -332,6 +340,14 @@ def _setup_actor_critic_neworks(  # noqa: CCR001
             transformer_mlp_units=cfg.env.network.transformer_mlp_units,
             conv_n_channels=cfg.env.network.conv_n_channels,
         )
+    elif cfg.env.name == "tetris":
+        assert isinstance(env.unwrapped, Tetris)
+        actor_critic_networks = networks.make_actor_critic_networks_tetris(
+            tetris=env.unwrapped,
+            conv_num_channels=cfg.env.network.conv_num_channels,
+            tetromino_layers=cfg.env.network.tetromino_layers,
+            head_layers=cfg.env.network.head_layers,
+        )
     elif cfg.env.name == "mmst":
         assert isinstance(env.unwrapped, MMST)
         actor_critic_networks = networks.make_actor_critic_networks_mmst(
@@ -381,20 +397,34 @@ def setup_training_state(
     params_state = agent.init_params(params_key)
 
     # Initialize environment states.
-    num_devices = jax.local_device_count()
+    num_local_devices = jax.local_device_count()
+    num_global_devices = jax.device_count()
+    num_workers = num_global_devices // num_local_devices
+    local_batch_size = agent.total_batch_size // num_global_devices
     reset_keys = jax.random.split(reset_key, agent.total_batch_size).reshape(
-        (num_devices, agent.batch_size_per_device, -1)
+        (
+            num_workers,
+            num_local_devices,
+            local_batch_size,
+            -1,
+        )
     )
-    env_state, timestep = jax.pmap(env.reset, axis_name="devices")(reset_keys)
+    reset_keys_per_worker = reset_keys[jax.process_index()]
+    env_state, timestep = jax.pmap(env.reset, axis_name="devices")(
+        reset_keys_per_worker
+    )
 
     # Initialize acting states.
-    acting_key_per_device = jax.random.split(acting_key, num_devices)
+    acting_key_per_device = jax.random.split(acting_key, num_global_devices).reshape(
+        num_workers, num_local_devices, -1
+    )
+    acting_key_per_worker_device = acting_key_per_device[jax.process_index()]
     acting_state = ActingState(
         state=env_state,
         timestep=timestep,
-        key=acting_key_per_device,
-        episode_count=jnp.zeros(num_devices, float),
-        env_step_count=jnp.zeros(num_devices, float),
+        key=acting_key_per_worker_device,
+        episode_count=jnp.zeros(num_local_devices, float),
+        env_step_count=jnp.zeros(num_local_devices, float),
     )
 
     # Build the training state.

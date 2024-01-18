@@ -148,16 +148,16 @@ class TestNestedSpec:
         assert isinstance(triply_nested, TriplyNested)
 
     def test_spec__replace(self, triply_nested_spec: specs.Spec) -> None:
-        arg_list = ["doubly_nested", "bounded_array", "discrete_array"]
+        arg_list = ["bounded_array", "doubly_nested", "doubly_nested", "discrete_array"]
         modified_specs = [
             triply_nested_spec["bounded_array"].replace(name="wrong_name"),
             triply_nested_spec["doubly_nested"].replace(
-                y=triply_nested_spec["doubly_nested"]["discrete_array"].replace(
-                    num_values=2
-                )
+                discrete_array=triply_nested_spec["doubly_nested"][
+                    "discrete_array"
+                ].replace(num_values=2)
             ),
             triply_nested_spec["doubly_nested"].replace(
-                doubly_nested=triply_nested_spec["doubly_nested"][
+                singly_nested=triply_nested_spec["doubly_nested"][
                     "singly_nested"
                 ].replace(
                     bounded_array=triply_nested_spec["doubly_nested"]["singly_nested"][
@@ -189,13 +189,13 @@ class TestArray:
 
     def test_dtype_type_error(self) -> None:
         with pytest.raises(TypeError):
-            specs.Array((1, 2, 3), "32")
+            specs.Array((1, 2, 3), "32")  # type: ignore
 
     def test_scalar_shape(self) -> None:
         specs.Array((), jnp.int32)
 
     def test_string_dtype_error(self) -> None:
-        specs.Array((1, 2, 3), "int32")
+        specs.Array((1, 2, 3), "int32")  # type: ignore
 
     def test_dtype(self) -> None:
         specs.Array((1, 2, 3), int)

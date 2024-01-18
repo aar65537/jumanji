@@ -70,6 +70,8 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+# MkDocs documentation
+docs_public/
 
 # PyBuilder
 .pybuilder/
@@ -107,7 +109,6 @@ celerybeat.pid
 # Environments
 .env
 .venv
-env/
 venv/
 ENV/
 env.bak/
