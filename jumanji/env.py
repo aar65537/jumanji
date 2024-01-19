@@ -106,9 +106,6 @@ class Environment(abc.ABC, Generic[State]):
             shape=(), dtype=float, minimum=0.0, maximum=1.0, name="discount"
         )
 
-    def sample_observation(self, key: chex.PRNGKey) -> chex.Array:
-        raise NotImplementedError
-
     def sample_action(self, key: chex.PRNGKey, observation: chex.Array) -> chex.Array:
         if hasattr(observation, "action_mask"):
             return self.action_spec()._sample(key, observation.action_mask)
