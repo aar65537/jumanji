@@ -23,7 +23,7 @@ import chex
 from typing_extensions import Protocol
 
 from jumanji import specs
-from jumanji.types import TimeStep
+from jumanji.types import Observation, TimeStep
 
 
 class StateProtocol(Protocol):
@@ -33,9 +33,10 @@ class StateProtocol(Protocol):
 
 
 State = TypeVar("State", bound="StateProtocol")
+ActionSpec = TypeVar("ActionSpec", bound=specs.Array)
 
 
-class Environment(abc.ABC, Generic[State]):
+class Environment(abc.ABC, Generic[State, ActionSpec, Observation]):
     """Environment written in Jax that differs from the gym API to make the step and
     reset functions jittable. The state contains all the dynamics and data needed to step
     the environment, no computation stored in attributes of self.
@@ -45,8 +46,15 @@ class Environment(abc.ABC, Generic[State]):
     def __repr__(self) -> str:
         return "Environment."
 
+    def __init__(self) -> None:
+        """Initialize environment."""
+        self._observation_spec = self._make_observation_spec()
+        self._action_spec = self._make_action_spec()
+        self._reward_spec = self._make_reward_spec()
+        self._discount_spec = self._make_discount_spec()
+
     @abc.abstractmethod
-    def reset(self, key: chex.PRNGKey) -> Tuple[State, TimeStep]:
+    def reset(self, key: chex.PRNGKey) -> Tuple[State, TimeStep[Observation]]:
         """Resets the environment to an initial state.
 
         Args:
@@ -58,7 +66,9 @@ class Environment(abc.ABC, Generic[State]):
         """
 
     @abc.abstractmethod
-    def step(self, state: State, action: chex.Array) -> Tuple[State, TimeStep]:
+    def step(
+        self, state: State, action: chex.Array
+    ) -> Tuple[State, TimeStep[Observation]]:
         """Run one timestep of the environment's dynamics.
 
         Args:
@@ -70,34 +80,68 @@ class Environment(abc.ABC, Generic[State]):
             timestep: TimeStep object corresponding the timestep returned by the environment,
         """
 
-    @abc.abstractmethod
-    def observation_spec(self) -> specs.Spec:
+    @property
+    def observation_spec(self) -> specs.Spec[Observation]:
         """Returns the observation spec.
 
         Returns:
-            observation_spec: a NestedSpec tree of spec.
+            observation_spec: a potentially nested `Spec` structure representing the observation.
         """
+        return self._observation_spec
 
     @abc.abstractmethod
-    def action_spec(self) -> specs.Spec:
+    def _make_observation_spec(self) -> specs.Spec[Observation]:
+        """Returns new observation spec.
+
+        Returns:
+            observation_spec: a potentially nested `Spec` structure representing the observation.
+        """
+
+    @property
+    def action_spec(self) -> ActionSpec:
         """Returns the action spec.
 
         Returns:
-            action_spec: a NestedSpec tree of spec.
+            action_spec: a potentially nested `Spec` structure representing the action.
+        """
+        return self._action_spec
+
+    @abc.abstractmethod
+    def _make_action_spec(self) -> ActionSpec:
+        """Returns new action spec.
+
+        Returns:
+            action_spec: a potentially nested `Spec` structure representing the action.
         """
 
+    @property
     def reward_spec(self) -> specs.Array:
-        """Describes the reward returned by the environment. By default, this is assumed to be a
-        single float.
+        """Returns the reward spec. By default, this is assumed to be a single float.
+
+        Returns:
+            reward_spec: a `specs.Array` spec.
+        """
+        return self._reward_spec
+
+    def _make_reward_spec(self) -> specs.Array:
+        """Returns new reward spec. By default, this is assumed to be a single float.
 
         Returns:
             reward_spec: a `specs.Array` spec.
         """
         return specs.Array(shape=(), dtype=float, name="reward")
 
+    @property
     def discount_spec(self) -> specs.BoundedArray:
-        """Describes the discount returned by the environment. By default, this is assumed to be a
-        single float between 0 and 1.
+        """Returns the discount spec. By default, this is assumed to be a single float between 0 and 1.
+
+        Returns:
+            discount_spec: a `specs.BoundedArray` spec.
+        """
+        return self._discount_spec
+
+    def _make_discount_spec(self) -> specs.BoundedArray:
+        """Returns new discount spec. By default, this is assumed to be a single float between 0 and 1.
 
         Returns:
             discount_spec: a `specs.BoundedArray` spec.
@@ -108,11 +152,11 @@ class Environment(abc.ABC, Generic[State]):
 
     def sample_action(self, key: chex.PRNGKey, observation: chex.Array) -> chex.Array:
         if hasattr(observation, "action_mask"):
-            return self.action_spec()._sample(key, observation.action_mask)
-        return self.action_spec()._sample(key)
+            return self.action_spec._sample(key, observation.action_mask)
+        return self.action_spec._sample(key)
 
     @property
-    def unwrapped(self) -> Environment:
+    def unwrapped(self) -> Environment[State, ActionSpec, Observation]:
         return self
 
     def render(self, state: State) -> Any:

@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, Optional, TypeVar
+from typing import Callable, Optional
 
 import chex
 import jax
 
 from jumanji.env import Environment
+from jumanji.types import Observation
 
-Observation = TypeVar("Observation")
-Action = TypeVar("Action")
-SelectActionFn = Callable[[chex.PRNGKey, Observation], Action]
+SelectActionFn = Callable[[chex.PRNGKey, Observation], chex.Array]
 
 
 def check_env_does_not_smoke(
@@ -40,8 +39,21 @@ def check_env_does_not_smoke(
     while not timestep.last():
         key, action_key = jax.random.split(key)
         action = select_action(action_key, timestep.observation)
-        env.action_spec().validate(action)
+        env.action_spec.validate(action)
         state, timestep = step_fn(state, action)
-        env.observation_spec().validate(timestep.observation)
+        env.observation_spec.validate(timestep.observation)
         if assert_finite_check:
             chex.assert_tree_all_finite((state, timestep))
+
+
+def access_specs(env: Environment) -> None:
+    """Access specs of the environment."""
+    env.observation_spec
+    env.action_spec
+    env.reward_spec
+    env.discount_spec
+
+
+def check_env_specs_does_not_smoke(env: Environment) -> None:
+    """Access specs of the environment in a jitted function to check no errors occur."""
+    jax.jit(access_specs, static_argnums=0)(env)

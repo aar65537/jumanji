@@ -45,6 +45,9 @@
     <img src="docs/env_anim/tetris.gif" alt="Tetris" width="16%">
     <img src="docs/env_anim/tsp.gif" alt="Tetris" width="16%">
   </div>
+    <div class="row" align="center">
+    <img src="docs/env_anim/pac_man.gif" alt="RobotWarehouse" width="16%">
+  </div>
 </div>
 
 
@@ -108,6 +111,7 @@ problems.
 | 🐍 Snake                                       | Routing  | `Snake-v1`                                           | [code](https://github.com/instadeepai/jumanji/tree/main/jumanji/environments/routing/snake/)     | [doc](https://instadeepai.github.io/jumanji/environments/snake/)       |
 | 📬 TSP (Travelling Salesman Problem)           | Routing  | `TSP-v1`                                             | [code](https://github.com/instadeepai/jumanji/tree/main/jumanji/environments/routing/tsp/)       | [doc](https://instadeepai.github.io/jumanji/environments/tsp/)         |
 | Multi Minimum Spanning Tree Problem | Routing  | `MMST-v0`                                | [code](https://github.com/instadeepai/jumanji/tree/main/jumanji/environments/routing/mmst)    | [doc](https://instadeepai.github.io/jumanji/environments/mmst/)    |
+| ᗧ•••ᗣ•• PacMan   | Routing  | `PacMan-v0`                                            | [code](https://github.com/instadeepai/jumanji/tree/main/jumanji/environments/routing/pacman/)      | [doc](https://instadeepai.github.io/jumanji/environments/pacman/)
 
 <h2 name="install" id="install">Installation 🎬</h2>
 
@@ -159,7 +163,7 @@ state, timestep = jax.jit(env.reset)(key)
 env.render(state)
 
 # Interact with the (jit-able) environment
-action = env.action_spec().generate_value()          # Action selection (dummy value here)
+action = env.action_spec.generate_value()          # Action selection (dummy value here)
 state, timestep = jax.jit(env.step)(state, action)   # Take a step and observe the next state and time step
 ```
 

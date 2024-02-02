@@ -43,7 +43,7 @@ from jumanji.types import TimeStep, restart, termination, transition
 from jumanji.viewer import Viewer
 
 
-class BinPack(Environment[State]):
+class BinPack(Environment[State, specs.MultiDiscreteArray, Observation]):
     """Problem of 3D bin packing, where a set of items have to be placed in a 3D container with the
     goal of maximizing its volume utilization. This environment only supports 1 bin, meaning it is
     equivalent to the 3D-knapsack problem. We use the Empty Maximal Space (EMS) formulation of this
@@ -106,7 +106,7 @@ class BinPack(Environment[State]):
     key = jax.random.key(0)
     state, timestep = jax.jit(env.reset)(key)
     env.render(state)
-    action = env.action_spec().generate_value()
+    action = env.action_spec.generate_value()
     state, timestep = jax.jit(env.step)(state, action)
     env.render(state)
     ```
@@ -154,6 +154,7 @@ class BinPack(Environment[State]):
         self.obs_num_ems = obs_num_ems
         self.reward_fn = reward_fn or DenseReward()
         self.normalize_dimensions = normalize_dimensions
+        super().__init__()
         self._viewer = viewer or BinPackViewer("BinPack", render_mode="human")
         self.debug = debug
 
@@ -171,7 +172,7 @@ class BinPack(Environment[State]):
             ]
         )
 
-    def observation_spec(self) -> specs.Spec[Observation]:
+    def _make_observation_spec(self) -> specs.Spec[Observation]:
         """Specifications of the observation of the `BinPack` environment.
 
         Returns:
@@ -248,7 +249,7 @@ class BinPack(Environment[State]):
             action_mask=action_mask,
         )
 
-    def action_spec(self) -> specs.MultiDiscreteArray:
+    def _make_action_spec(self) -> specs.MultiDiscreteArray:
         """Specifications of the action expected by the `BinPack` environment.
 
         Returns:
@@ -610,13 +611,11 @@ class BinPack(Environment[State]):
             _,
             direction_intersections_mask,
         ) in zip(intersections_ems_dict.items(), intersections_mask_dict.items()):
-
             # Inner loop iterates through alternative directions.
             for (alt_direction, alt_direction_intersections_ems), (
                 _,
                 alt_direction_intersections_mask,
             ) in zip(intersections_ems_dict.items(), intersections_mask_dict.items()):
-
                 # The current direction EMS is included in the alternative EMS.
                 directions_included_in_alt_directions = jax.vmap(
                     jax.vmap(Space.is_included, in_axes=(None, 0)), in_axes=(0, None)

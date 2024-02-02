@@ -17,7 +17,11 @@ import jax.numpy as jnp
 import jax.random
 import pytest
 
-from jumanji.testing.env_not_smoke import SelectActionFn, check_env_does_not_smoke
+from jumanji.testing.env_not_smoke import (
+    SelectActionFn,
+    check_env_does_not_smoke,
+    check_env_specs_does_not_smoke,
+)
 from jumanji.testing.fakes import FakeEnvironment
 
 
@@ -54,5 +58,10 @@ def test_random_select_action(fake_env: FakeEnvironment) -> None:
     env_state, timestep = fake_env.reset(key1)
     action_1 = fake_env.sample_action(key2, timestep.observation)
     action_2 = fake_env.sample_action(key3, timestep.observation)
-    fake_env.action_spec().validate(action_1)
+    fake_env.action_spec.validate(action_1)
     assert not jnp.all(action_1 == action_2)
+
+
+def test_env_specs_not_smoke(fake_env: FakeEnvironment) -> None:
+    """Test that the"""
+    check_env_specs_does_not_smoke(fake_env)
