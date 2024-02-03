@@ -150,7 +150,7 @@ class Environment(abc.ABC, Generic[State, ActionSpec, Observation]):
             shape=(), dtype=float, minimum=0.0, maximum=1.0, name="discount"
         )
 
-    def sample_action(self, key: chex.PRNGKey, observation: chex.Array) -> chex.Array:
+    def sample_action(self, key: chex.PRNGKey, observation: Observation) -> chex.Array:
         if hasattr(observation, "action_mask"):
             return self.action_spec._sample(key, observation.action_mask)
         return self.action_spec._sample(key)

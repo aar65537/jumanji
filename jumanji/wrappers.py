@@ -353,6 +353,10 @@ class VmapWrapper(
         state, timestep = jax.vmap(self._env.step)(state, action)
         return state, timestep
 
+    def sample_action(self, key: chex.PRNGKey, observation: Observation) -> chex.Array:
+        action = jax.vmap(self._env.sample_action)(key, observation)
+        return action
+
     def render(self, state: State) -> Any:
         """Render the first environment state of the given batch.
         The remaining elements of the batched state are ignored.
@@ -515,6 +519,10 @@ class VmapAutoResetWrapper(
         )
 
         return state, timestep
+
+    def sample_action(self, key: chex.PRNGKey, observation: Observation) -> chex.Array:
+        action = jax.vmap(self._env.sample_action)(key, observation)
+        return action
 
     def render(self, state: State) -> Any:
         """Render the first environment state of the given batch.
