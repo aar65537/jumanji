@@ -38,6 +38,17 @@ def test_fake_environment__step(fake_environment: fakes.FakeEnvironment) -> None
 
 
 @pytest.mark.parametrize("fake_environment", [()], indirect=True)
+def test_fake_environment__sample_action(
+    fake_environment: fakes.FakeEnvironment,
+) -> None:
+    """Validates the sample action function of the fake environment."""
+    state, timestep = fake_environment.reset(random.PRNGKey(0))
+    action = fake_environment.sample_action(random.PRNGKey(0), timestep.observation)
+    fake_environment.action_spec.validate(action)
+    fake_environment.step(state, action)
+
+
+@pytest.mark.parametrize("fake_environment", [()], indirect=True)
 def test_fake_environment__does_not_smoke(
     fake_environment: fakes.FakeEnvironment,
 ) -> None:
@@ -76,6 +87,20 @@ def test_fake_multi_environment__step(
     assert timestep.reward.shape == (fake_multi_environment.num_agents,)
     assert timestep.discount.shape == (fake_multi_environment.num_agents,)
     assert timestep.observation.shape[0] == fake_multi_environment.num_agents
+
+
+@pytest.mark.parametrize("fake_multi_environment", [()], indirect=True)
+def test_fake_multi_environment__sample_action(
+    fake_multi_environment: fakes.FakeMultiEnvironment,
+) -> None:
+    """Validates the sample action function of the fake multi agent environment."""
+    state, timestep = fake_multi_environment.reset(random.PRNGKey(0))
+    action = fake_multi_environment.sample_action(
+        random.PRNGKey(0), timestep.observation
+    )
+    fake_multi_environment.action_spec.validate(action)
+    assert action.shape[0] == fake_multi_environment.num_agents
+    fake_multi_environment.step(state, action)
 
 
 @pytest.mark.parametrize("fake_multi_environment", [()], indirect=True)

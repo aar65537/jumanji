@@ -503,6 +503,18 @@ class TestVmapWrapper:
         assert next_timestep.discount.shape == (keys.shape[0],)
         assert next_timestep.observation.shape[0] == keys.shape[0]
 
+    def test_vmap_env__sample_action(
+        self, fake_vmap_environment: FakeVmapWrapper, keys: chex.PRNGKey
+    ) -> None:
+        """Validates sample action function of the vmap environment"""
+        state, timestep = fake_vmap_environment.reset(keys)
+        action = jax.jit(fake_vmap_environment.sample_action)(
+            keys, timestep.observation
+        )
+        fake_vmap_environment.step(state, action)
+
+        assert action.shape[0] == keys.shape[0]
+
     def test_vmap_env__render(
         self, fake_vmap_environment: FakeVmapWrapper, keys: chex.PRNGKey
     ) -> None:
@@ -719,6 +731,20 @@ class TestVmapAutoResetWrapper:
         assert next_timestep.reward.shape == (keys.shape[0],)
         assert next_timestep.discount.shape == (keys.shape[0],)
         assert next_timestep.observation.shape[0] == keys.shape[0]
+
+    def test_vmap_auto_reset_wrapper__sample_action(
+        self,
+        fake_vmap_auto_reset_environment: FakeVmapAutoResetWrapper,
+        keys: chex.PRNGKey,
+    ) -> None:
+        """Validates sample action function of the vmap environment"""
+        state, timestep = fake_vmap_auto_reset_environment.reset(keys)
+        action = jax.jit(fake_vmap_auto_reset_environment.sample_action)(
+            keys, timestep.observation
+        )
+        fake_vmap_auto_reset_environment.step(state, action)
+
+        assert action.shape[0] == keys.shape[0]
 
     def test_vmap_auto_reset_wrapper__render(
         self,
